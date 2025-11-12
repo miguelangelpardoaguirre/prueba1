@@ -5,7 +5,7 @@ USE mi_proyecto_f;
 
 CREATE TABLE rol(
     id_rol SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    nombre_rol V    ARCHAR(20)
+    nombre_rol VARCHAR(20)
 );
 
 CREATE TABLE usuario(
