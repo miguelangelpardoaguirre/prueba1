@@ -7,7 +7,7 @@ from app.router.dependencias import get_current_user
 from app.schemas.usuarios import CrearUsuario, EditarPass, EditarUsuario, RetornoUsuario
 from core.database import get_db
 from app.crud import usuarios as crud_users
- 
+    
 
 router = APIRouter()
 
