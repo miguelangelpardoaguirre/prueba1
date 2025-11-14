@@ -15,7 +15,7 @@ CREATE TABLE usuario(
     correo VARCHAR(100) UNIQUE,
     contra_encript VARCHAR(140),
     id_rol SMALLINT UNSIGNED,
-    estado BOOLEAN,  -- True = 1 Activo   False = 0 Inactivo
+    estado BOOLEAN,  
     FOREIGN KEY (id_rol) REFERENCES rol(id_rol)
 );
 
