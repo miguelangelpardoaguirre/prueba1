@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -14,11 +15,11 @@ router = APIRouter()
 def create_user(
     user: CrearUsuario, 
     db: Session = Depends(get_db),
-    user_token: RetornoUsuario = Depends(get_current_user)
+    #user_token: RetornoUsuario = Depends(get_current_user)
 ):
     try:
         if user_token.id_rol !=1 :
-            raise HTTPException(status_code=401, detail="no autorizado para crear usuarios")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado para crear usuarios")
         crud_users.create_user(db, user)
         return {"message": "Usuario creado correctamente"}
     except Exception as e:
@@ -33,11 +34,11 @@ def get_by_id(
     
     try:
         if user_token.id_rol !=1 :
-            raise HTTPException(status_code=401, detail="no autorizado para crear usuarios")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado para consultar usuarios")
         result = crud_users.get_user_by_id(db, id_usuario)
     
         if result is None:
-            HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
 
         return result
     except SQLAlchemyError as e:
@@ -51,17 +52,17 @@ def get_by_email(
 ):
     try:
         if user_token.id_rol !=1 :
-            raise HTTPException(status_code=401, detail="no autorizado para crear usuarios")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado para consultar usuarios")
         result = crud_users.get_user_by_email(db, correo)
     
         if result is None:
-            HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
 
         return result
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-@router.delete("/eliminar-por-id/{id}", status_code=status.HTTP_200_OK)
+@router.delete("/eliminar-por-id/{id_usuario}", status_code=status.HTTP_200_OK)
 def delete_by_id(
     id_usuario:int, 
     db:Session = Depends(get_db),
@@ -69,11 +70,13 @@ def delete_by_id(
 ):
     try:
         if user_token.id_rol !=1 :
-            raise HTTPException(status_code=401, detail="no autorizado para crear usuarios")
-        user = crud_users.user_delete(db, id_usuario)
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado para eliminar usuarios")
+        deleted = crud_users.user_delete(db, id_usuario)
     
-        if user:
+        if deleted:
             return {"message": "Usuario eliminado correctamente"}
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -86,7 +89,7 @@ def update_user(
 ):
     try:
         if user_token.id_rol !=1 :
-            raise HTTPException(status_code=401, detail="no autorizado para crear usuarios")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado para editar usuarios")
         success = crud_users.update_user(db, user_id, user)
         if not success:
             raise HTTPException(status_code=400, detail="No se pudo actualizar el usuario")
@@ -94,7 +97,7 @@ def update_user(
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-@router.put("/editar-contrasenia/{user_id}") # el tipo put es para editar
+@router.put("/editar-contrasenia", status_code=status.HTTP_200_OK) # el tipo put es para editar
 def update_password(
     user: EditarPass, 
     db: Session = Depends(get_db),
@@ -102,21 +105,38 @@ def update_password(
 ):
     try:
         if user_token.id_rol !=1 :
-            raise HTTPException(status_code=401, detail="no autorizado para crear usuarios")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado para editar contraseña")
         verificar= crud_users.verify_user_pass(db, user)
         if not verificar:
-            raise HTTPException(status_code=400, detail="las contraseñas no coinciden")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La contraseña anterior es incorrecta")
         
-        success = crud_users.update_user(db, user)
+        success = crud_users.update_password(db, user)
         if not success:
-            raise HTTPException(status_code=400, detail="No se pudo actualizar la contraseña de el usuario")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo actualizar la contraseña del usuario")
         return {"message": "contraseña actualizada correctamente"}
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-@router.get("/obtener-todos}", status_code=status.HTTP_200_OK, response_model=list[RetornoUsuario])
+@router.get("/obtener-todos", status_code=status.HTTP_200_OK, response_model=List[RetornoUsuario])
 def get_all(db: Session = Depends(get_db)):
     try:
+        users = crud_users.get_all_user(db)
+        if users is None:
+            raise HTTPException(status_code=404, detail="Usuarios no encontrados")
+        return users
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    
+@router.get("/obtener-todos-secure", status_code=status.HTTP_200_OK, response_model=List[RetornoUsuario])
+def get_all_s(
+    db: Session = Depends(get_db),
+    user_token: RetornoUsuario = Depends(get_current_user)
+):
+    try:
+        if user_token.id_rol != 1:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para consultar todos los usuarios")
+        
         users = crud_users.get_all_user(db)
         if users is None:
             raise HTTPException(status_code=404, detail="Usuarios no encontrados")
